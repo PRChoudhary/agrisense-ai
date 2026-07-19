@@ -16,7 +16,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "postinstall": "prisma generate",
-    "deploy:start": "prisma migrate deploy && node src/server.js"
+    "deploy:start": "prisma db push && node src/server.js"
   },
   "dependencies": {
     "@prisma/client": "^5.8.0",
