@@ -28,19 +28,17 @@ export const logger = winston.createLogger({
   ],
 })
 
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.printf(
-          ({ level, message, timestamp, stack }) =>
-            `${timestamp} ${level}: ${message} ${stack || ''}`
-        )
-      ),
-    })
-  )
-}
+logger.add(
+  new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.printf(
+        ({ level, message, timestamp, stack }) =>
+          `${timestamp} ${level}: ${message} ${stack || ''}`
+      )
+    ),
+  })
+)
 
 export const httpLogger = {
   write: (message) => logger.info(message.trim()),
