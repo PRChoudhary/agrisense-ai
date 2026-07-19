@@ -1,7 +1,8 @@
 import prisma from '../config/database.js'
 
 export const getAllCrops = async (filters = {}) => {
-  const { categoryId, search, isActive = true } = filters
+  let { categoryId, search, isActive = true } = filters
+  if (typeof isActive === 'string') isActive = isActive === 'true'
   const where = { isActive }
   if (categoryId) where.categoryId = categoryId
   if (search) {
