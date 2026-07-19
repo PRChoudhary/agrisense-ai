@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  FARMER
+  GUEST
+}
+
+enum Provider {
+  EMAIL
+  GOOGLE
+}
+
+enum AlertType {
+  PRICE
+  WEATHER
+  NEWS
+  AI_RECOMMENDATION
+}
+
+enum AlertDirection {
+  ABOVE
+  BELOW
+}
+
+enum NewsCategory {
+  POSITIVE
+  NEGATIVE
+  NEUTRAL
+}
+
+enum NewsImpact {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum Language {
+  EN
+  HI
+}
+
+enum FavoriteType {
+  CROP
+  MANDI
+}
+
+model User {
+  id              String        @id @default(cuid())
+  email           String        @unique
+  name            String
+  phone           String?
+  passwordHash    String?
+  role            Role          @default(FARMER)
+  provider        Provider      @default(EMAIL)
+  googleId        String?       @unique
+  avatarUrl       String?
+  state           String?
+  isEmailVerified Boolean       @default(false)
+  preferredLang   Language      @default(EN)
+  preferences     Json?         @default("{}")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  alerts          Alert[]
+  favorites       Favorite[]
+  searchHistory   SearchHistory[]
+  chatSessions    ChatSession[]
+  refreshTokens   RefreshToken[]
+  
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@map("refresh_tokens")
+}
+
+model State {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  code      String     @unique
+  districts District[]
+  mandis    Mandi[]
+  
+  @@map("states")
+}
+
+model District {
+  id      String  @id @default(cuid())
+  name    String
+  stateId String
+  state   State   @relation(fields: [stateId], references: [id])
+  mandis  Mandi[]
+  
+  @@unique([name, stateId])
+  @@map("districts")
+}
+
+model Mandi {
+  id         String    @id @default(cuid())
+  name       String
+  city       String
+  stateId    String
+  districtId String
+  state      State     @relation(fields: [stateId], references: [id])
+  district   District  @relation(fields: [districtId], references: [id])
+  latitude   Float?
+  longitude  Float?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  
+  prices     Price[]
+  favorites  Favorite[]
+  priceAlerts PriceAlert[]
+  predictions Prediction[]
+  
+  @@unique([name, stateId])
+  @@map("mandis")
+}
+
+model CropCategory {
+  id    String @id @default(cuid())
+  name  String @unique
+  crops Crop[]
+  
+  @@map("crop_categories")
+}
+
+model Crop {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  nameHindi   String?
+  categoryId  String
+  category    CropCategory @relation(fields: [categoryId], references: [id])
+  season      String?
+  imageUrl    String?
+  mspPrice    Float?      // Minimum Support Price (government)
+  unit        String      @default("Quintal")
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  
+  prices      Price[]
+  favorites   Favorite[]
+  priceAlerts PriceAlert[]
+  predictions Prediction[]
+  
+  @@map("crops")
+}
+
+model Price {
+  id              String   @id @default(cuid())
+  mandiId         String
+  cropId          String
+  mandi           Mandi    @relation(fields: [mandiId], references: [id])
+  crop            Crop     @relation(fields: [cropId], references: [id])
+  modalPrice      Float    // Current/modal price
+  minPrice        Float
+  maxPrice        Float
+  arrivalQuantity Float    @default(0)  // in quintals
+  date            DateTime @default(now())
+  createdAt       DateTime @default(now())
+  
+  @@unique([mandiId, cropId, date])
+  @@index([cropId, date])
+  @@index([mandiId, date])
+  @@index([date])
+  @@map("prices")
+}
+
+model WeatherData {
+  id          String   @id @default(cuid())
+  location    String
+  state       String
+  latitude    Float
+  longitude   Float
+  temperature Float
+  humidity    Float
+  rainfall    Float    @default(0)
+  windSpeed   Float    @default(0)
+  condition   String
+  icon        String?
+  forecast    Json?    // 7-day forecast array
+  riskScore   Float    @default(0)  // 0-100
+  riskLevel   String   @default("low")
+  aiSummary   String?
+  recordedAt  DateTime @default(now())
+  
+  @@index([location, recordedAt])
+  @@map("weather_data")
+}
+
+model News {
+  id          String       @id @default(cuid())
+  title       String
+  summary     String
+  content     String?
+  aiSummary   String?
+  category    NewsCategory @default(NEUTRAL)
+  impact      NewsImpact   @default(MEDIUM)
+  source      String
+  sourceUrl   String
+  imageUrl    String?
+  publishedAt DateTime
+  createdAt   DateTime     @default(now())
+  
+  @@index([category, publishedAt])
+  @@map("news")
+}
+
+model Alert {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        AlertType
+  name        String
+  isActive    Boolean   @default(true)
+  emailNotify Boolean   @default(true)
+  pushNotify  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  priceAlert  PriceAlert?
+  
+  @@map("alerts")
+}
+
+model PriceAlert {
+  id          String         @id @default(cuid())
+  alertId     String         @unique
+  alert       Alert          @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  cropId      String
+  crop        Crop           @relation(fields: [cropId], references: [id])
+  mandiId     String?
+  mandi       Mandi?         @relation(fields: [mandiId], references: [id])
+  threshold   Float
+  direction   AlertDirection @default(ABOVE)
+  
+  @@map("price_alerts")
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String        @default("New Conversation")
+  language  Language      @default(EN)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  
+  messages  ChatMessage[]
+  
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      ChatRole
+  content   String
+  metadata  Json?       // tokens used, model, etc.
+  createdAt DateTime    @default(now())
+  
+  @@index([sessionId, createdAt])
+  @@map("chat_messages")
+}
+
+model Prediction {
+  id              String   @id @default(cuid())
+  cropId          String
+  crop            Crop     @relation(fields: [cropId], references: [id])
+  mandiId         String?
+  mandi           Mandi?   @relation(fields: [mandiId], references: [id])
+  predictedPrice  Float
+  minPrediction   Float?
+  maxPrediction   Float?
+  confidence      Float    // 0-100
+  horizon         Int      // days ahead
+  reasoning       String?
+  createdAt       DateTime @default(now())
+  targetDate      DateTime
+  
+  @@index([cropId, targetDate])
+  @@map("predictions")
+}
+
+model Favorite {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      FavoriteType
+  cropId    String?
+  crop      Crop?        @relation(fields: [cropId], references: [id])
+  mandiId   String?
+  mandi     Mandi?       @relation(fields: [mandiId], references: [id])
+  createdAt DateTime     @default(now())
+  
+  @@unique([userId, type, cropId, mandiId])
+  @@map("favorites")
+}
+
+model SearchHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  query     String
+  filters   Json?    // stored filter state
+  resultCount Int    @default(0)
+  createdAt DateTime @default(now())
+  
+  @@index([userId, createdAt])
+  @@map("search_history")
+}

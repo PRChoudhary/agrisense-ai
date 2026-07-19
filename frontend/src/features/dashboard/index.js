@@ -1,0 +1,5 @@
+export { default as WeatherWidget } from './components/WeatherWidget'
+export { default as PredictionsWidget } from './components/PredictionsWidget'
+export { default as AlertsWidget } from './components/AlertsWidget'
+export { default as NewsWidget } from './components/NewsWidget'
+export { default as QuickActions } from './components/QuickActions'
