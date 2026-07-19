@@ -13,7 +13,7 @@ async function startServer() {
   try {
     await connectDatabase()
     if (process.env.NODE_ENV !== 'test') {
-      app.listen(PORT, () => {
+      app.listen(PORT, '0.0.0.0', () => {
         logger.info(`🌿 AgriSense AI Server running on port ${PORT}`)
         logger.info(`📊 Environment: ${process.env.NODE_ENV}`)
       })
