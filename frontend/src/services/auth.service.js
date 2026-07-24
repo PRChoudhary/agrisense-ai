@@ -33,5 +33,11 @@ export const authService = {
   /**
    * Get current user profile
    */
-  getProfile: () => get('/auth/me')
+  getProfile: () => get('/auth/me'),
+
+  /**
+   * Update current user profile
+   * @param {Object} data
+   */
+  updateProfile: (data) => patch('/auth/me', data),
 }

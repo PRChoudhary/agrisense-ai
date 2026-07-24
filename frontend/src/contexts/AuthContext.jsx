@@ -17,8 +17,13 @@ export function AuthProvider({ children }) {
     }
     
     try {
-      const data = await authService.getProfile()
-      setUser(data.user)
+      const res = await authService.getProfile()
+      const userData = res.data || res.user || res
+      if (userData && userData.id) {
+        setUser(userData)
+      } else {
+        setUser(null)
+      }
     } catch (error) {
       console.error('Failed to load user profile:', error)
       logout()
@@ -39,13 +44,20 @@ export function AuthProvider({ children }) {
   const login = async (credentials) => {
     try {
       const res = await authService.login(credentials.email, credentials.password)
-      setToken(res.token)
-      localStorage.setItem('agrisense_token', res.token)
-      setUser(res.user)
+      const payload = res.data || res
+      const authToken = payload.accessToken || payload.token
+      const userData = payload.user || payload
+
+      if (!authToken) throw new Error('Invalid token returned from server')
+
+      setToken(authToken)
+      localStorage.setItem('agrisense_token', authToken)
+      setUser(userData)
       toast.success('Successfully logged in')
       return res
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed')
+      const msg = error.response?.data?.message || error.message || 'Login failed'
+      toast.error(msg)
       throw error
     }
   }
@@ -53,13 +65,20 @@ export function AuthProvider({ children }) {
   const register = async (data) => {
     try {
       const res = await authService.register(data)
-      setToken(res.token)
-      localStorage.setItem('agrisense_token', res.token)
-      setUser(res.user)
+      const payload = res.data || res
+      const authToken = payload.accessToken || payload.token
+      const userData = payload.user || payload
+
+      if (!authToken) throw new Error('Invalid token returned from server')
+
+      setToken(authToken)
+      localStorage.setItem('agrisense_token', authToken)
+      setUser(userData)
       toast.success('Registration successful')
       return res
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed')
+      const msg = error.response?.data?.message || error.message || 'Registration failed'
+      toast.error(msg)
       throw error
     }
   }
@@ -67,13 +86,31 @@ export function AuthProvider({ children }) {
   const loginWithGoogle = async (googleToken) => {
     try {
       const res = await authService.googleLogin(googleToken)
-      setToken(res.token)
-      localStorage.setItem('agrisense_token', res.token)
-      setUser(res.user)
+      const payload = res.data || res
+      const authToken = payload.accessToken || payload.token
+      const userData = payload.user || payload
+
+      setToken(authToken)
+      localStorage.setItem('agrisense_token', authToken)
+      setUser(userData)
       toast.success('Successfully logged in with Google')
       return res
     } catch (error) {
       toast.error('Google login failed')
+      throw error
+    }
+  }
+
+  const updateProfile = async (updateData) => {
+    try {
+      const res = await authService.updateProfile(updateData)
+      const updatedUser = res.data || res.user || res
+      setUser(prev => ({ ...prev, ...updatedUser }))
+      toast.success('Profile updated successfully')
+      return updatedUser
+    } catch (error) {
+      const msg = error.response?.data?.message || error.message || 'Failed to update profile'
+      toast.error(msg)
       throw error
     }
   }
@@ -91,10 +128,11 @@ export function AuthProvider({ children }) {
     token,
     isLoading,
     isAuthenticated: !!user,
-    isGuest: user?.role === 'guest',
+    isGuest: user?.role === 'GUEST' || user?.role === 'guest',
     login,
     register,
     loginWithGoogle,
+    updateProfile,
     logout
   }
 

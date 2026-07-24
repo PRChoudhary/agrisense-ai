@@ -8,6 +8,7 @@ import weatherRoutes from './weather.routes.js'
 import predictionsRoutes from './predictions.routes.js'
 import newsRoutes from './news.routes.js'
 import alertsRoutes from './alerts.routes.js'
+import adminRoutes from './admin.routes.js'
 
 const router = Router()
 
@@ -20,5 +21,6 @@ router.use('/weather', weatherRoutes)
 router.use('/predictions', predictionsRoutes)
 router.use('/news', newsRoutes)
 router.use('/alerts', alertsRoutes)
+router.use('/admin', adminRoutes)
 
 export default router
